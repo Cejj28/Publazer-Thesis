@@ -137,6 +137,46 @@ app.get('/api/papers', async (req, res) => {
   }
 });
 
+// 5. DELETE PAPER ROUTE
+app.delete('/api/papers/:id', async (req, res) => {
+  try {
+    const paper = await Paper.findById(req.params.id);
+    if (!paper) return res.status(404).json({ error: "Paper not found" });
+
+    // 1. Delete the actual file from the 'uploads' folder
+    const filePath = path.join(__dirname, 'uploads', paper.fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // 2. Delete the record from MongoDB
+    await Paper.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: "Paper deleted successfully" });
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ error: "Error deleting paper" });
+  }
+});
+
+// 6. UPDATE PAPER ROUTE (Title/Abstract/Keywords)
+app.put('/api/papers/:id', async (req, res) => {
+  try {
+    const { title, abstract, keywords } = req.body;
+    
+    const updatedPaper = await Paper.findByIdAndUpdate(
+      req.params.id,
+      { title, abstract, keywords },
+      { new: true } // Return the updated version
+    );
+    
+    res.json(updatedPaper);
+  } catch (error) {
+    console.error("Update Error:", error);
+    res.status(500).json({ error: "Error updating paper" });
+  }
+});
+
 
 app.listen(3001, () => {
   console.log('🚀 Server is running on port 3001');

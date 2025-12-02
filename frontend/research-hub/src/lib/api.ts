@@ -42,3 +42,13 @@ export const getPapers = async (authorId?: string) => {
   });
   return response.data;
 };
+
+export const deletePaper = async (id: string) => {
+  const response = await api.delete(`/papers/${id}`);
+  return response.data;
+};
+
+export const updatePaper = async (id: string, data: { title: string; abstract: string; keywords: string }) => {
+  const response = await api.put(`/papers/${id}`, data);
+  return response.data;
+};
