@@ -8,16 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { uploadPaper } from '@/lib/api';
+import { uploadPaper } from '@/lib/api'; 
 
 export default function UploadResearch() {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  
-  // 1. Add state to hold the actual FILE object
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // To store the file
   const [formData, setFormData] = useState({
     title: '',
     abstract: '',
@@ -32,8 +29,7 @@ export default function UploadResearch() {
         toast.error('Please upload a PDF file');
         return;
       }
-      // 2. Save the file to state so we can send it later
-      setSelectedFile(file);
+      setSelectedFile(file); // Save the actual file object
       setFormData({ ...formData, fileName: file.name });
       toast.success(`File selected: ${file.name}`);
     }
@@ -42,7 +38,6 @@ export default function UploadResearch() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check if a file is actually selected
     if (!selectedFile) {
       toast.error('Please select a PDF file');
       return;
@@ -57,9 +52,9 @@ export default function UploadResearch() {
     setUploadSuccess(false);
 
     try {
-      // 3. Create the "Envelope" (FormData) to send the file
+      // Create FormData to send text + file together
       const data = new FormData();
-      data.append('file', selectedFile); // <--- This puts the PDF in the envelope
+      data.append('file', selectedFile);
       data.append('title', formData.title);
       data.append('abstract', formData.abstract);
       data.append('keywords', formData.keywords);
@@ -67,7 +62,6 @@ export default function UploadResearch() {
       data.append('authorId', user.id);
       data.append('department', user.department || '');
 
-      // 4. Send the FormData envelope
       await uploadPaper(data);
 
       setUploadSuccess(true);
