@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, User, FileText, Download, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
+// 1. Define your backend URL
+const API_BASE_URL = 'http://localhost:3001';
+
 interface ResearchPaper {
   id: string;
   title: string;
@@ -128,26 +131,38 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
 
           <Separator />
 
-          <div className="bg-muted/50 rounded-lg p-6">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <FileText className="w-16 h-16 text-muted-foreground" />
-            </div>
+          {/* --- UPDATED PDF PREVIEW SECTION --- */}
+          <div className="bg-muted/50 rounded-lg p-4 h-[500px] flex flex-col">
             <h3 className="font-semibold text-center text-foreground mb-2">PDF Preview</h3>
-            <p className="text-sm text-center text-muted-foreground mb-4">
-              Preview functionality will display the uploaded PDF document here
-            </p>
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <p className="text-xs text-muted-foreground">
-                {paper.fileName} - PDF viewer placeholder
-              </p>
-            </div>
+            
+            {paper.fileName ? (
+              <iframe
+                src={`${API_BASE_URL}/uploads/${paper.fileName}`}
+                className="w-full h-full rounded-md border border-border bg-white"
+                title="PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                No PDF file available
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
-            <Button className="flex-1">
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
+            {/* --- UPDATED DOWNLOAD BUTTON --- */}
+            <Button className="flex-1" asChild>
+              <a 
+                href={`${API_BASE_URL}/uploads/${paper.fileName}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                download
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </a>
             </Button>
+            
             <Button variant="outline" className="flex-1">
               <FileText className="w-4 h-4 mr-2" />
               View Full Report

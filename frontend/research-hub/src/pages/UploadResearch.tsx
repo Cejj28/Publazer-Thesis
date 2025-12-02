@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { uploadPaper } from '@/lib/api'; // <--- Import the real API
 
 export default function UploadResearch() {
   const { user } = useAuth();
@@ -40,40 +41,49 @@ export default function UploadResearch() {
       return;
     }
 
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
     setUploading(true);
     setUploadSuccess(false);
 
-    // Simulate upload process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      // --- REAL BACKEND CONNECTION ---
+      await uploadPaper({
+        title: formData.title,
+        abstract: formData.abstract,
+        keywords: formData.keywords,
+        fileName: formData.fileName,
+        author: user.name,
+        authorId: user.id, // Important: This links the paper to the logged-in user!
+        department: user.department
+      });
 
-    // Save to localStorage
-    const papers = JSON.parse(localStorage.getItem('research_papers') || '[]');
-    const newPaper = {
-      id: Date.now().toString(),
-      ...formData,
-      author: user?.name,
-      authorId: user?.id,
-      uploadDate: new Date().toISOString(),
-      status: 'pending',
-      plagiarismScore: Math.floor(Math.random() * 30) + 5, // 5-35%
-    };
-    papers.push(newPaper);
-    localStorage.setItem('research_papers', JSON.stringify(papers));
+      setUploadSuccess(true);
+      toast.success('Research paper uploaded successfully!', {
+        description: 'Plagiarism check will be performed automatically.',
+      });
 
-    setUploading(false);
-    setUploadSuccess(true);
-    toast.success('Research paper uploaded successfully!', {
-      description: 'Plagiarism check will be performed automatically.',
-    });
+      // Reset form
+      setTimeout(() => {
+        setFormData({ title: '', abstract: '', keywords: '', fileName: '' });
+        setUploadSuccess(false);
+      }, 3000);
 
-    // Reset form
-    setTimeout(() => {
-      setFormData({ title: '', abstract: '', keywords: '', fileName: '' });
-      setUploadSuccess(false);
-    }, 3000);
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Upload failed", {
+        description: error.response?.data?.error || "Could not save to database."
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
+    // ... (This JSX stays exactly the same as your previous code) ...
     <DashboardLayout>
       <div className="max-w-3xl mx-auto space-y-6">
         <div>

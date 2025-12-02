@@ -1,14 +1,46 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const multer = require('multer'); 
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
+
 const User = require('./models/User');
+const Paper = require('./models/Paper');
 
 const app = express();
+
+// --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 
-// YOUR CONNECTION
+// --- NEW LINE: Serve static files from 'uploads' folder ---
+// This allows you to visit http://localhost:3001/uploads/filename.pdf
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+// --- 1. SETUP FILE STORAGE ---
+// Ensure the 'uploads' folder exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// Configure where to save the files
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Save to 'server/uploads' folder
+  },
+  filename: function (req, file, cb) {
+    // Rename file to avoid duplicates (e.g., "170999-research.pdf")
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+//CONNECTION
 const MONGO_URI = "mongodb+srv://admin:admin123@publazer.arhmawq.mongodb.net/?appName=Publazer";
 
 mongoose.connect(MONGO_URI)
@@ -77,6 +109,38 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: "Error logging in" });
   }
 });
+
+// 3. REAL UPLOAD ROUTE (With File Support)
+// 'upload.single("file")' tells the server to look for a file named "file"
+app.post('/api/papers/upload', upload.single("file"), async (req, res) => {
+  try {
+    // Now we have req.file (the PDF) and req.body (the text)
+    const { title, abstract, keywords, author, authorId, department } = req.body;
+    
+    if (!req.file) {
+      return res.status(400).json({ error: "No PDF file uploaded" });
+    }
+
+    const newPaper = new Paper({
+      title,
+      abstract,
+      keywords,
+      fileName: req.file.filename, // Save the actual system filename
+      author,
+      authorId,
+      department,
+      plagiarismScore: Math.floor(Math.random() * 30) + 5
+    });
+
+    await newPaper.save();
+
+    res.status(201).json({ message: "File uploaded successfully!", paper: newPaper });
+  } catch (error) {
+    console.error("Upload Error:", error);
+    res.status(500).json({ error: "Failed to upload" });
+  }
+});
+
 
 app.listen(3001, () => {
   console.log('🚀 Server is running on port 3001');
