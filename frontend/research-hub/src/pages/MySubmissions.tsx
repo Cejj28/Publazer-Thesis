@@ -47,7 +47,7 @@ export default function MySubmissions() {
   const fetchMyPapers = async () => {
     if (!user?.id) return;
     try {
-      const data = await getPapers(user.id);
+      const data = await getPapers({ authorId: user.id });
       setPapers(data);
     } catch (error) {
       console.error(error);

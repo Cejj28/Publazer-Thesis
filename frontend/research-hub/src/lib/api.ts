@@ -34,11 +34,10 @@ export const uploadPaper = async (formData: FormData) => {
   return response.data;
 };
 
-// New function to get papers
-export const getPapers = async (authorId?: string) => {
-  // If authorId is provided, it adds ?authorId=123 to the URL
+// function to get papers
+export const getPapers = async (filters: { authorId?: string; status?: string; search?: string } = {}) => {
   const response = await api.get('/papers', { 
-    params: { authorId } 
+    params: filters 
   });
   return response.data;
 };

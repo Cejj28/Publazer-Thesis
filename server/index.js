@@ -116,20 +116,32 @@ app.post('/api/papers/upload', upload.single("file"), async (req, res) => {
   }
 });
 
-// 4. GET PAPERS ROUTE
+// 4. GET PAPERS ROUTE (Enhanced for Search & Filter)
 app.get('/api/papers', async (req, res) => {
   try {
-    // Check if the client sent an 'authorId' to filter by
-    const { authorId } = req.query;
+    const { authorId, status, search } = req.query;
     
     let query = {};
+
+    // Filter by Author (for My Submissions)
     if (authorId) {
       query.authorId = authorId;
     }
 
-    // Find papers based on the query, sorted by newest first
+    // Filter by Status (for Repository view)
+    if (status) {
+      query.status = status;
+    }
+
+    // Search by Title or Keywords (Case insensitive)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { keywords: { $regex: search, $options: 'i' } }
+      ];
+    }
+
     const papers = await Paper.find(query).sort({ uploadDate: -1 });
-    
     res.json(papers);
   } catch (error) {
     console.error("Fetch Error:", error);
