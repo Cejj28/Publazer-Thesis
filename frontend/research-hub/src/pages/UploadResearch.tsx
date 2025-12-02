@@ -8,12 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { uploadPaper } from '@/lib/api'; // <--- Import the real API
+import { uploadPaper } from '@/lib/api';
 
 export default function UploadResearch() {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  
+  // 1. Add state to hold the actual FILE object
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     abstract: '',
@@ -28,6 +32,8 @@ export default function UploadResearch() {
         toast.error('Please upload a PDF file');
         return;
       }
+      // 2. Save the file to state so we can send it later
+      setSelectedFile(file);
       setFormData({ ...formData, fileName: file.name });
       toast.success(`File selected: ${file.name}`);
     }
@@ -36,7 +42,8 @@ export default function UploadResearch() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fileName) {
+    // Check if a file is actually selected
+    if (!selectedFile) {
       toast.error('Please select a PDF file');
       return;
     }
@@ -50,16 +57,18 @@ export default function UploadResearch() {
     setUploadSuccess(false);
 
     try {
-      // --- REAL BACKEND CONNECTION ---
-      await uploadPaper({
-        title: formData.title,
-        abstract: formData.abstract,
-        keywords: formData.keywords,
-        fileName: formData.fileName,
-        author: user.name,
-        authorId: user.id, // Important: This links the paper to the logged-in user!
-        department: user.department
-      });
+      // 3. Create the "Envelope" (FormData) to send the file
+      const data = new FormData();
+      data.append('file', selectedFile); // <--- This puts the PDF in the envelope
+      data.append('title', formData.title);
+      data.append('abstract', formData.abstract);
+      data.append('keywords', formData.keywords);
+      data.append('author', user.name);
+      data.append('authorId', user.id);
+      data.append('department', user.department || '');
+
+      // 4. Send the FormData envelope
+      await uploadPaper(data);
 
       setUploadSuccess(true);
       toast.success('Research paper uploaded successfully!', {
@@ -69,6 +78,7 @@ export default function UploadResearch() {
       // Reset form
       setTimeout(() => {
         setFormData({ title: '', abstract: '', keywords: '', fileName: '' });
+        setSelectedFile(null);
         setUploadSuccess(false);
       }, 3000);
 
@@ -83,7 +93,6 @@ export default function UploadResearch() {
   };
 
   return (
-    // ... (This JSX stays exactly the same as your previous code) ...
     <DashboardLayout>
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
@@ -190,21 +199,6 @@ export default function UploadResearch() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6">
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground">Submission Guidelines:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Only PDF files are accepted</li>
-                <li>Maximum file size: 20MB</li>
-                <li>Ensure all text is selectable (not scanned images)</li>
-                <li>Plagiarism check will be performed automatically</li>
-                <li>Faculty will review your submission after plagiarism check</li>
-              </ul>
-            </div>
           </CardContent>
         </Card>
       </div>
