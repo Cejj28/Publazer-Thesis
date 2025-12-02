@@ -53,7 +53,7 @@ export const updatePaper = async (id: string, data: { title: string; abstract: s
 };
 
 //function for Faculty to change status
-export const updatePaperStatus = async (id: string, status: 'approved' | 'rejected') => {
-  const response = await api.put(`/papers/${id}`, { status });
+export const updatePaperStatus = async (id: string, status: 'approved' | 'rejected', comments?: string) => {
+  const response = await api.put(`/papers/${id}`, { status, comments });
   return response.data;
 };

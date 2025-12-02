@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, BookOpen, Calendar, User, Eye, Download } from 'lucide-react';
+import { Search, Calendar, User, Eye, Download } from 'lucide-react';
 import { getPapers } from '@/lib/api';
 import { toast } from 'sonner';
+// 1. Import the Detail Component
+import { PaperDetail } from '@/components/PaperDetail';
 
 interface ResearchPaper {
   _id: string;
@@ -18,21 +20,23 @@ interface ResearchPaper {
   department: string;
   uploadDate: string;
   status: string;
+  plagiarismScore: number;
 }
 
 export default function Repository() {
   const [papers, setPapers] = useState<ResearchPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 2. Add State for the Popup
+  const [selectedPaper, setSelectedPaper] = useState<ResearchPaper | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  // Function to fetch papers
   const fetchPapers = async (query = '') => {
     setLoading(true);
     try {
-      // --- CHANGE IS HERE ---
-      // We now strictly ask for "approved" papers only
       const data = await getPapers({ 
-        status: 'approved', // <--- FILTER ADDED
+        status: 'approved', 
         search: query 
       });
       setPapers(data);
@@ -44,30 +48,31 @@ export default function Repository() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchPapers();
   }, []);
 
-  // Handle Search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchPapers(searchQuery);
   };
 
+  // 3. Helper to open the popup
+  const handleViewPaper = (paper: ResearchPaper) => {
+    setSelectedPaper(paper);
+    setDetailOpen(true);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Research Repository</h1>
-            <p className="text-muted-foreground">
-              Browse and discover approved academic research papers
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Research Repository</h1>
+          <p className="text-muted-foreground">
+            Browse and discover approved academic research papers
+          </p>
         </div>
 
-        {/* Search Bar */}
         <Card className="bg-muted/30 border-none shadow-sm">
           <CardContent className="pt-6">
             <form onSubmit={handleSearch} className="flex gap-2">
@@ -80,15 +85,11 @@ export default function Repository() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button type="submit">
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
+              <Button type="submit">Search</Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Results Grid */}
         {loading ? (
           <div className="text-center py-12">Loading repository...</div>
         ) : papers.length === 0 ? (
@@ -98,13 +99,18 @@ export default function Repository() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {papers.map((paper) => (
-              <Card key={paper._id} className="flex flex-col hover:shadow-lg transition-shadow duration-200">
+              <Card 
+                key={paper._id} 
+                // 4. Make the Card Clickable
+                className="flex flex-col hover:shadow-lg transition-all duration-200 cursor-pointer group border-transparent hover:border-primary/20"
+                onClick={() => handleViewPaper(paper)}
+              >
                 <CardHeader>
                   <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg line-clamp-2 leading-tight">
+                    <CardTitle className="text-lg line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {paper.title}
                     </CardTitle>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs shrink-0">
                       Approved
                     </Badge>
                   </div>
@@ -140,13 +146,16 @@ export default function Repository() {
                   )}
                 </CardContent>
 
-                <CardFooter className="border-t bg-muted/10 p-4 gap-2">
-                  <Button variant="default" className="flex-1" asChild>
-                    <a href={`http://localhost:3001/uploads/${paper.fileName}`} target="_blank" rel="noreferrer">
-                      <Eye className="w-4 h-4 mr-2" /> View
-                    </a>
+                <CardFooter className="border-t bg-muted/5 p-4 gap-2">
+                  {/* Note: e.stopPropagation() prevents the card click from triggering when you click the button */}
+                  <Button variant="default" className="flex-1" onClick={(e) => {
+                    e.stopPropagation(); 
+                    handleViewPaper(paper);
+                  }}>
+                    <Eye className="w-4 h-4 mr-2" /> View Details
                   </Button>
-                  <Button variant="outline" className="flex-1" asChild>
+                  
+                  <Button variant="outline" className="flex-1" asChild onClick={(e) => e.stopPropagation()}>
                     <a href={`http://localhost:3001/uploads/${paper.fileName}`} download>
                       <Download className="w-4 h-4 mr-2" /> Download
                     </a>
@@ -156,6 +165,13 @@ export default function Repository() {
             ))}
           </div>
         )}
+
+        {/* 5. Render the Detail Modal at the bottom */}
+        <PaperDetail 
+          paper={selectedPaper}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
       </div>
     </DashboardLayout>
   );

@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-// 1. IMPORT THE ALERT DIALOG COMPONENTS
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +16,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FileText, Eye, Calendar, AlertCircle, CheckCircle2, Clock, Trash2, Pencil, Save } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +31,7 @@ interface ResearchPaper {
   author: string;
   uploadDate: string;
   status: string;
+  comments?: string;
 }
 
 export default function MySubmissions() {
@@ -40,8 +39,6 @@ export default function MySubmissions() {
   const [papers, setPapers] = useState<ResearchPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPaper, setEditingPaper] = useState<ResearchPaper | null>(null);
-
-  // 2. STATE FOR DELETING (To know which paper we are warning about)
   const [paperToDelete, setPaperToDelete] = useState<string | null>(null);
 
   const fetchMyPapers = async () => {
@@ -61,7 +58,6 @@ export default function MySubmissions() {
     fetchMyPapers();
   }, [user?.id]);
 
-  // 3. UPDATED DELETE FUNCTION (No more 'confirm' popup here)
   const confirmDelete = async () => {
     if (!paperToDelete) return;
     
@@ -72,7 +68,7 @@ export default function MySubmissions() {
     } catch (error) {
       toast.error("Failed to delete paper");
     } finally {
-      setPaperToDelete(null); // Close the dialog
+      setPaperToDelete(null); 
     }
   };
 
@@ -153,6 +149,7 @@ export default function MySubmissions() {
                       <h4 className="text-sm font-semibold mb-1">Abstract</h4>
                       <p className="text-sm text-muted-foreground line-clamp-3">{paper.abstract}</p>
                     </div>
+                    
                     {paper.keywords && (
                       <div className="flex flex-wrap gap-2">
                         {paper.keywords.split(',').map((tag, i) => (
@@ -162,6 +159,23 @@ export default function MySubmissions() {
                         ))}
                       </div>
                     )}
+
+                    {/* --- FACULTY FEEDBACK SECTION --- */}
+                    {paper.comments && (
+                      <div className={`mt-4 p-3 rounded-lg border text-sm ${
+                        paper.status === 'rejected' 
+                          ? 'bg-red-50 border-red-200 text-red-800' 
+                          : 'bg-green-50 border-green-200 text-green-800'
+                      }`}>
+                        <div className="font-semibold flex items-center gap-2 mb-1">
+                          <AlertCircle className="w-4 h-4" />
+                          Faculty Feedback:
+                        </div>
+                        <p>{paper.comments}</p>
+                      </div>
+                    )}
+                    {/* -------------------------------- */}
+
                   </CardContent>
 
                   <CardFooter className="bg-muted/10 border-t p-4 flex justify-between items-center">
@@ -176,7 +190,6 @@ export default function MySubmissions() {
                         <Pencil className="w-4 h-4 mr-2" /> Edit
                       </Button>
 
-                      {/* 4. TRIGGER THE DELETE DIALOG */}
                       <Button variant="destructive" size="sm" onClick={() => setPaperToDelete(paper._id)}>
                         <Trash2 className="w-4 h-4 mr-2" /> Delete
                       </Button>
@@ -228,7 +241,7 @@ export default function MySubmissions() {
           </DialogContent>
         </Dialog>
 
-        {/* 5. DELETE CONFIRMATION ALERT DIALOG */}
+        {/* DELETE CONFIRMATION */}
         <AlertDialog open={!!paperToDelete} onOpenChange={(open) => !open && setPaperToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
