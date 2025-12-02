@@ -11,14 +11,20 @@ import { Label } from '@/components/ui/label';
 import { Upload, Library, FileCheck, Users, AlertCircle, Eye, Check, X } from 'lucide-react';
 import { getPapers, updatePaperStatus } from '@/lib/api';
 import { toast } from 'sonner';
+import { PaperDetail } from '@/components/PaperDetail'; // <--- 1. Import this
 
+// Updated Interface to include all fields needed for the Detail View
 interface ResearchPaper {
   _id: string;
   title: string;
+  abstract: string;
+  keywords: string;
+  fileName: string;
   author: string;
+  department: string;
   uploadDate: string;
   status: string;
-  fileName: string;
+  plagiarismScore: number;
   comments?: string;
 }
 
@@ -37,9 +43,14 @@ export default function Dashboard() {
   
   const [comment, setComment] = useState('');
 
+  // --- 2. NEW STATE FOR DETAIL POPUP ---
+  const [selectedPaper, setSelectedPaper] = useState<ResearchPaper | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
   const loadDashboardData = async () => {
     try {
       const allPapers: ResearchPaper[] = await getPapers({});
+      
       setStats({
         total: allPapers.length,
         pending: allPapers.filter(p => p.status === 'pending').length,
@@ -58,25 +69,31 @@ export default function Dashboard() {
     if (user) loadDashboardData();
   }, [user]);
 
-  // 1. Open the Dialog
-  const openReviewDialog = (id: string, action: 'approved' | 'rejected') => {
+  // Open Review Dialog
+  const openReviewDialog = (e: React.MouseEvent, id: string, action: 'approved' | 'rejected') => {
+    e.stopPropagation(); // <--- Important: Stops the card from opening when you click the button
     setReviewDialog({ open: true, paperId: id, action });
-    setComment(''); // Clear previous comment
+    setComment('');
   };
 
-  // 2. Submit the Review
+  // Submit Review
   const submitReview = async () => {
     if (!reviewDialog.paperId || !reviewDialog.action) return;
 
     try {
       await updatePaperStatus(reviewDialog.paperId, reviewDialog.action, comment);
-      
       toast.success(`Paper ${reviewDialog.action} successfully`);
       loadDashboardData();
-      setReviewDialog({ open: false, paperId: null, action: null }); // Close dialog
+      setReviewDialog({ open: false, paperId: null, action: null });
     } catch (error) {
       toast.error("Action failed");
     }
+  };
+
+  // 3. Helper to open the Detail View
+  const handleViewPaper = (paper: ResearchPaper) => {
+    setSelectedPaper(paper);
+    setDetailOpen(true);
   };
 
   if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
@@ -132,31 +149,41 @@ export default function Dashboard() {
             ) : (
               <div className="grid gap-4">
                 {pendingPapers.map((paper) => (
-                  <Card key={paper._id}>
+                  <Card 
+                    key={paper._id} 
+                    // 4. Make the card clickable
+                    className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-yellow-400"
+                    onClick={() => handleViewPaper(paper)}
+                  >
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{paper.title}</h3>
+                          <h3 className="font-semibold text-lg hover:text-primary transition-colors">{paper.title}</h3>
                           <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Submitted by <span className="font-medium text-foreground">{paper.author}</span> on {new Date(paper.uploadDate).toLocaleDateString()}
+                          Submitted by <span className="font-medium text-foreground">{paper.author}</span> ({paper.department})
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Click to view full abstract and details
                         </p>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                           <a href={`http://localhost:3001/uploads/${paper.fileName}`} target="_blank" rel="noreferrer">
                             <Eye className="w-4 h-4 mr-2" /> View PDF
                           </a>
                         </Button>
                         <div className="h-8 w-px bg-border hidden md:block" />
                         
-                        {/* THESE BUTTONS NOW OPEN THE DIALOG */}
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => openReviewDialog(paper._id, 'approved')}>
+                        {/* 5. Pass event 'e' to stopPropagation inside openReviewDialog */}
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" 
+                          onClick={(e) => openReviewDialog(e, paper._id, 'approved')}>
                           <Check className="w-4 h-4 mr-2" /> Approve
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => openReviewDialog(paper._id, 'rejected')}>
+                        <Button size="sm" variant="destructive" 
+                          onClick={(e) => openReviewDialog(e, paper._id, 'rejected')}>
                           <X className="w-4 h-4 mr-2" /> Reject
                         </Button>
                       </div>
@@ -168,7 +195,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* --- REVIEW DIALOG --- */}
+        {/* REVIEW DIALOG */}
         <Dialog open={reviewDialog.open} onOpenChange={(open) => !open && setReviewDialog({ ...reviewDialog, open: false })}>
           <DialogContent>
             <DialogHeader>
@@ -176,22 +203,20 @@ export default function Dashboard() {
                 {reviewDialog.action === 'approved' ? 'Approve Paper' : 'Reject Paper'}
               </DialogTitle>
               <DialogDescription>
-                Add optional comments or feedback for the student.
+                Add comments for the student (optional for approval, recommended for rejection).
               </DialogDescription>
             </DialogHeader>
-            
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Faculty Comments</Label>
+                <Label>Faculty Feedback</Label>
                 <Textarea 
-                  placeholder="E.g., Good work, or Please revise the abstract..." 
+                  placeholder="e.g. 'Excellent work!' or 'Please fix the citation style...'" 
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={4}
                 />
               </div>
             </div>
-
             <DialogFooter>
               <Button variant="outline" onClick={() => setReviewDialog({ ...reviewDialog, open: false })}>Cancel</Button>
               <Button 
@@ -203,6 +228,13 @@ export default function Dashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 6. DETAIL POPUP (Shared Component) */}
+        <PaperDetail 
+          paper={selectedPaper as any} // Cast to any if interface mismatch, or ensure ResearchPaper matches
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
 
       </div>
     </DashboardLayout>
