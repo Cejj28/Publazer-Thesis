@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, BookOpen, Calendar, User, Eye, Download } from 'lucide-react';
+import { Search, BookOpen, Calendar, User, Eye, Download } from 'lucide-react';
 import { getPapers } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -29,9 +29,12 @@ export default function Repository() {
   const fetchPapers = async (query = '') => {
     setLoading(true);
     try {
-      // For now, we fetch ALL papers. 
-      // Later, you can change this to: { status: 'approved', search: query }
-      const data = await getPapers({ search: query });
+      // --- CHANGE IS HERE ---
+      // We now strictly ask for "approved" papers only
+      const data = await getPapers({ 
+        status: 'approved', // <--- FILTER ADDED
+        search: query 
+      });
       setPapers(data);
     } catch (error) {
       console.error(error);
@@ -59,7 +62,7 @@ export default function Repository() {
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Research Repository</h1>
             <p className="text-muted-foreground">
-              Browse and discover academic research papers
+              Browse and discover approved academic research papers
             </p>
           </div>
         </div>
@@ -90,7 +93,7 @@ export default function Repository() {
           <div className="text-center py-12">Loading repository...</div>
         ) : papers.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No papers found matching your search.
+            No approved papers found matching your search.
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -101,12 +104,9 @@ export default function Repository() {
                     <CardTitle className="text-lg line-clamp-2 leading-tight">
                       {paper.title}
                     </CardTitle>
-                    {/* Only show status if it's NOT approved (for clarity) */}
-                    {paper.status !== 'approved' && (
-                      <Badge variant="secondary" className="text-xs">
-                        {paper.status}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      Approved
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                     <span className="flex items-center gap-1">
@@ -142,7 +142,6 @@ export default function Repository() {
 
                 <CardFooter className="border-t bg-muted/10 p-4 gap-2">
                   <Button variant="default" className="flex-1" asChild>
-                    {/* View/Download PDF */}
                     <a href={`http://localhost:3001/uploads/${paper.fileName}`} target="_blank" rel="noreferrer">
                       <Eye className="w-4 h-4 mr-2" /> View
                     </a>

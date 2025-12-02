@@ -171,15 +171,23 @@ app.delete('/api/papers/:id', async (req, res) => {
   }
 });
 
-// 6. UPDATE PAPER ROUTE (Title/Abstract/Keywords)
+// 6. UPDATE PAPER ROUTE (Enhanced to allow Status updates)
 app.put('/api/papers/:id', async (req, res) => {
   try {
-    const { title, abstract, keywords } = req.body;
+    // Now accepting 'status' as well
+    const { title, abstract, keywords, status } = req.body;
     
+    // Create an object with only the fields that were actually sent
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (abstract) updateData.abstract = abstract;
+    if (keywords) updateData.keywords = keywords;
+    if (status) updateData.status = status; // <--- This allows approval!
+
     const updatedPaper = await Paper.findByIdAndUpdate(
       req.params.id,
-      { title, abstract, keywords },
-      { new: true } // Return the updated version
+      updateData,
+      { new: true }
     );
     
     res.json(updatedPaper);
