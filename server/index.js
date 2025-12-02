@@ -116,6 +116,28 @@ app.post('/api/papers/upload', upload.single("file"), async (req, res) => {
   }
 });
 
+// 4. GET PAPERS ROUTE
+app.get('/api/papers', async (req, res) => {
+  try {
+    // Check if the client sent an 'authorId' to filter by
+    const { authorId } = req.query;
+    
+    let query = {};
+    if (authorId) {
+      query.authorId = authorId;
+    }
+
+    // Find papers based on the query, sorted by newest first
+    const papers = await Paper.find(query).sort({ uploadDate: -1 });
+    
+    res.json(papers);
+  } catch (error) {
+    console.error("Fetch Error:", error);
+    res.status(500).json({ error: "Failed to fetch papers" });
+  }
+});
+
+
 app.listen(3001, () => {
   console.log('🚀 Server is running on port 3001');
 });
