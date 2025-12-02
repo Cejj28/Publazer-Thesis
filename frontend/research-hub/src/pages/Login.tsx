@@ -59,7 +59,7 @@ export default function Login() {
               <BookOpen className="w-12 h-12 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Research Hub</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">PUBLAZER</h1>
           <p className="text-muted-foreground text-lg">
             Academic Repository & Plagiarism Detection System
           </p>
