@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { checkPlagiarism } from '@/lib/api'; // <--- Import real API
 
 interface ScanResult {
   overallScore: number;
@@ -25,6 +26,7 @@ export default function CheckPlagiarism() {
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [textContent, setTextContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,13 +36,14 @@ export default function CheckPlagiarism() {
         toast.error('Please upload a PDF file');
         return;
       }
+      setSelectedFile(file);
       setFileName(file.name);
       toast.success(`File selected: ${file.name}`);
     }
   };
 
   const handleScan = async () => {
-    if (!textContent && !fileName) {
+    if (!textContent && !selectedFile) {
       toast.error('Please provide text or upload a PDF file');
       return;
     }
@@ -48,41 +51,33 @@ export default function CheckPlagiarism() {
     setScanning(true);
     setScanResult(null);
 
-    // Simulate plagiarism scanning process
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      const formData = new FormData();
+      if (textContent) {
+        formData.append('text', textContent);
+      }
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
 
-    // Generate simulated results
-    const overallScore = Math.floor(Math.random() * 40) + 5; // 5-45%
-    const numSources = Math.floor(Math.random() * 4) + 1; // 1-4 sources
-    
-    const sources = [
-      { name: 'IEEE Research Paper', url: 'https://ieeexplore.ieee.org/document/example' },
-      { name: 'Research Gate Publication', url: 'https://researchgate.net/publication/example' },
-      { name: 'Journal Article', url: 'https://journal.example.com/article/123' },
-      { name: 'Academic Repository', url: 'https://repository.example.edu/paper/456' },
-    ];
+      // --- CALL REAL BACKEND ---
+      const result = await checkPlagiarism(formData);
+      setScanResult(result);
+      toast.success('Plagiarism scan completed!');
 
-    const matchedSources = sources.slice(0, numSources).map((source) => ({
-      source: source.name,
-      percentage: Math.floor(Math.random() * 20) + 5,
-      url: source.url,
-    }));
-
-    const result: ScanResult = {
-      overallScore,
-      matchedSources,
-      details: `The system analyzed ${textContent ? 'the provided text' : fileName} against millions of academic sources, web pages, and publications. Found ${numSources} potential matches that require review.`,
-    };
-
-    setScanResult(result);
-    setScanning(false);
-    toast.success('Plagiarism scan completed!');
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.error || "Scan failed. Please try again.";
+      toast.error(msg);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const getSimilarityLevel = (score: number) => {
-    if (score < 15) return { label: 'Low Risk', color: 'text-success', icon: CheckCircle2 };
-    if (score < 30) return { label: 'Moderate Risk', color: 'text-warning', icon: AlertTriangle };
-    return { label: 'High Risk', color: 'text-destructive', icon: AlertCircle };
+    if (score < 15) return { label: 'Low Risk', color: 'text-green-600', badge: 'bg-green-100 text-green-800', icon: CheckCircle2 };
+    if (score < 30) return { label: 'Moderate Risk', color: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800', icon: AlertTriangle };
+    return { label: 'High Risk', color: 'text-red-600', badge: 'bg-red-100 text-red-800', icon: AlertCircle };
   };
 
   const similarity = scanResult ? getSimilarityLevel(scanResult.overallScore) : null;
@@ -94,7 +89,7 @@ export default function CheckPlagiarism() {
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Plagiarism Checker</h1>
           <p className="text-muted-foreground">
-            Upload a document or paste text to check for plagiarism
+            Compare your document against the internal repository database.
           </p>
         </div>
 
@@ -106,7 +101,12 @@ export default function CheckPlagiarism() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="upload" className="space-y-4">
+            <Tabs defaultValue="upload" className="space-y-4" onValueChange={() => {
+              setScanResult(null); 
+              setSelectedFile(null); 
+              setTextContent('');
+              setFileName('');
+            }}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="upload">Upload PDF</TabsTrigger>
                 <TabsTrigger value="paste">Paste Text</TabsTrigger>
@@ -135,7 +135,7 @@ export default function CheckPlagiarism() {
                           <p className="text-sm text-muted-foreground">
                             Click to upload or drag and drop
                           </p>
-                          <p className="text-xs text-muted-foreground">PDF files only (Max 20MB)</p>
+                          <p className="text-xs text-muted-foreground">PDF files only</p>
                         </div>
                       )}
                     </label>
@@ -148,15 +148,12 @@ export default function CheckPlagiarism() {
                   <Label htmlFor="text">Paste Your Text</Label>
                   <Textarea
                     id="text"
-                    placeholder="Paste the content you want to check for plagiarism..."
+                    placeholder="Paste abstract or body text here..."
                     value={textContent}
                     onChange={(e) => setTextContent(e.target.value)}
                     rows={12}
                     className="font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {textContent.length} characters
-                  </p>
                 </div>
               </TabsContent>
             </Tabs>
@@ -164,12 +161,12 @@ export default function CheckPlagiarism() {
             <Button
               onClick={handleScan}
               className="w-full mt-4"
-              disabled={scanning || (!textContent && !fileName)}
+              disabled={scanning || (!textContent && !selectedFile)}
             >
               {scanning ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Scanning for Plagiarism...
+                  Scanning Repository...
                 </>
               ) : (
                 <>
@@ -181,16 +178,17 @@ export default function CheckPlagiarism() {
           </CardContent>
         </Card>
 
+        {/* RESULTS SECTION */}
         {scanResult && (
-          <Card className="border-2">
+          <Card className="border-2 animate-in fade-in zoom-in duration-300">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Scan Results</CardTitle>
-                  <CardDescription>Plagiarism detection analysis completed</CardDescription>
+                  <CardDescription>Comparison against internal database</CardDescription>
                 </div>
                 {SimilarityIcon && (
-                  <Badge variant="outline" className={`${similarity?.color} border-current text-lg py-2 px-4`}>
+                  <Badge variant="outline" className={`${similarity?.badge} text-lg py-2 px-4`}>
                     <SimilarityIcon className="w-5 h-5 mr-2" />
                     {similarity?.label}
                   </Badge>
@@ -211,73 +209,39 @@ export default function CheckPlagiarism() {
               </div>
 
               <div>
-                <h3 className="font-semibold text-foreground mb-3">Matched Sources</h3>
-                <div className="space-y-3">
-                  {scanResult.matchedSources.map((match, idx) => (
-                    <Card key={idx} className="bg-muted/50">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground mb-1">{match.source}</p>
-                            <a
-                              href={match.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline"
-                            >
-                              {match.url}
-                            </a>
+                <h3 className="font-semibold text-foreground mb-3">Matched Sources in Repository</h3>
+                {scanResult.matchedSources.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No matches found in the system.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {scanResult.matchedSources.map((match, idx) => (
+                      <Card key={idx} className="bg-muted/50 border-none">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground mb-1">{match.source}</p>
+                              <Badge variant="outline">{match.url}</Badge>
+                            </div>
+                            <div className="text-right">
+                               <span className="text-sm font-bold text-foreground block">
+                                 {match.percentage}% match
+                               </span>
+                            </div>
                           </div>
-                          <Badge variant="secondary" className="font-semibold">
-                            {match.percentage}% match
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="p-4 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold text-foreground mb-2">Analysis Details</h3>
+                <h3 className="font-semibold text-foreground mb-2">Details</h3>
                 <p className="text-sm text-muted-foreground">{scanResult.details}</p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
-                  Download Report
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setScanResult(null);
-                    setTextContent('');
-                    setFileName('');
-                  }}
-                >
-                  Check Another Document
-                </Button>
               </div>
             </CardContent>
           </Card>
         )}
-
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-primary mt-0.5" />
-              <div className="space-y-1 text-sm">
-                <p className="font-semibold text-foreground">
-                  How Plagiarism Detection Works
-                </p>
-                <p className="text-muted-foreground">
-                  Our system compares your content against millions of academic sources, journals, web pages, and previously submitted papers. Scores below 15% are generally acceptable, while higher scores may indicate content that needs citation review or revision.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

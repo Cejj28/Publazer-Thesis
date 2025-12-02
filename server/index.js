@@ -5,6 +5,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const stringSimilarity = require('string-similarity');
+const pdf = require('pdf-parse');
 
 const User = require('./models/User');
 const Paper = require('./models/Paper');
@@ -332,6 +334,65 @@ app.post('/api/users', async (req, res) => {
   } catch (error) {
     console.error("Create User Error:", error);
     res.status(500).json({ error: "Failed to create user" });
+  }
+});
+
+// 12. CHECK PLAGIARISM ROUTE
+app.post('/api/plagiarism/check', upload.single("file"), async (req, res) => {
+  try {
+    const { text } = req.body;
+    let textToCheck = text || "";
+
+    // A. If a file was uploaded, extract text from PDF
+    if (req.file) {
+      const filePath = path.join(__dirname, 'uploads', req.file.filename);
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      textToCheck = pdfData.text;
+      
+      // Clean up the temp file after reading
+      fs.unlinkSync(filePath); 
+    }
+
+    if (!textToCheck || textToCheck.length < 50) {
+      return res.status(400).json({ error: "Text is too short to scan (min 50 chars)" });
+    }
+
+    // B. Fetch all existing papers to compare against
+    const allPapers = await Paper.find({}, 'title abstract'); // Only get title and abstract for speed
+
+    let highestScore = 0;
+    let matchedSources = [];
+
+    // C. Compare input against every paper in the DB
+    allPapers.forEach(paper => {
+      // Compare against Abstract
+      const abstractSimilarity = stringSimilarity.compareTwoStrings(textToCheck, paper.abstract);
+      const score = Math.round(abstractSimilarity * 100);
+
+      if (score > 5) { // Only report matches > 5%
+        if (score > highestScore) highestScore = score;
+        
+        matchedSources.push({
+          source: paper.title,
+          percentage: score,
+          url: "Internal Repository"
+        });
+      }
+    });
+
+    // Sort matches by highest percentage
+    matchedSources.sort((a, b) => b.percentage - a.percentage);
+
+    res.json({
+      overallScore: highestScore,
+      matchedSources: matchedSources.slice(0, 5), // Top 5 matches
+      details: `Scanned against ${allPapers.length} documents in the repository.`
+    });
+
+  } catch (error) {
+    console.error("Plagiarism Check Error:", error);
+    res.status(500).json({ error: "Failed to process plagiarism check" });
   }
 });
 
