@@ -57,3 +57,36 @@ export const updatePaperStatus = async (id: string, status: 'approved' | 'reject
   const response = await api.put(`/papers/${id}`, { status, comments });
   return response.data;
 };
+
+// USER MANAGEMENT FUNCTIONS
+export const getUsers = async () => {
+  const response = await api.get('/users');
+  return response.data;
+};
+
+export const updateUser = async (id: string, data: { 
+  name: string; 
+  email: string; 
+  role: string;
+  department?: string;
+  password?: string; // <--- Added this
+}) => {
+  const response = await api.put(`/users/${id}`, data);
+  return response.data;
+};
+
+export const deleteUser = async (id: string) => {
+  const response = await api.delete(`/users/${id}`);
+  return response.data;
+};
+
+export const createUser = async (userData: { 
+  name: string; 
+  email: string; 
+  role: string; 
+  password?: string; 
+  department?: string; 
+}) => {
+  const response = await api.post('/users', userData);
+  return response.data;
+};

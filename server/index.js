@@ -263,6 +263,78 @@ app.get('/api/seed', async (req, res) => {
   }
 });
 
+// 8. GET ALL USERS (For Admin Panel)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find({}, '-password'); // -password means "don't send the password back"
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+// 9. UPDATE USER (Enhanced to allow Password & Department updates)
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const { name, email, role, department, password } = req.body;
+    
+    // 1. Prepare the data to update
+    const updateData = { name, email, role, department };
+
+    // 2. Only update password if the admin typed something new
+    if (password && password.trim() !== "") {
+      updateData.password = password;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("Update User Error:", error);
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// 10. DELETE USER
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
+// 11. CREATE USER (Admin Feature - Custom Password)
+app.post('/api/users', async (req, res) => {
+  try {
+    // Now accepting password and department from the admin
+    const { name, email, password, role, department } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const newUser = new User({
+      name,
+      email,
+      password, // <--- Using the manual password
+      role,
+      department: department || "General",
+    });
+
+    await newUser.save();
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error("Create User Error:", error);
+    res.status(500).json({ error: "Failed to create user" });
+  }
+});
+
 app.listen(3001, () => {
   console.log('🚀 Server is running on port 3001');
 });
