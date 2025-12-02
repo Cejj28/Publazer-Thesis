@@ -9,12 +9,23 @@ import {
   Users,
   LogOut,
   BookOpen,
+  UserCog // Import Icon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Sidebar = () => {
-  const { user, logout, hasRole, hasAnyRole } = useAuth();
+  const { user, logout, hasAnyRole } = useAuth();
 
   const navItems: { label: string; icon: any; href: string; roles: UserRole[] }[] = [
     {
@@ -59,6 +70,13 @@ export const Sidebar = () => {
       href: '/users',
       roles: ['admin'],
     },
+    // --- NEW PROFILE LINK ---
+    {
+      label: 'My Profile',
+      icon: UserCog,
+      href: '/profile',
+      roles: ['student', 'faculty', 'admin'], // Everyone can see this
+    },
   ];
 
   return (
@@ -100,14 +118,32 @@ export const Sidebar = () => {
           </p>
         </div>
 
-        <Button
-          onClick={logout}
-          variant="outline"
-          className="w-full justify-start gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </Button>
+        {/* --- LOGOUT CONFIRMATION --- */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to log out of your session?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={logout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Log Out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </aside>
   );

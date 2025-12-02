@@ -28,13 +28,25 @@ export const loginUser = async (credentials: LoginData) => {
   return response.data;
 };
 
-// This is the function your Upload page needs
+// Define the shape of the data we send
+interface PaperData {
+  title: string;
+  abstract: string;
+  keywords: string;
+  fileName: string;
+  author: string;
+  authorId: string;
+  department?: string;
+}
+
 export const uploadPaper = async (formData: FormData) => {
+  // Note: We don't manually set Content-Type here; 
+  // axios/browser sets it automatically to 'multipart/form-data' when it sees FormData
   const response = await api.post('/papers/upload', formData);
   return response.data;
 };
 
-// function to get papers
+// Update this function to accept an options object
 export const getPapers = async (filters: { authorId?: string; status?: string; search?: string } = {}) => {
   const response = await api.get('/papers', { 
     params: filters 
@@ -52,9 +64,17 @@ export const updatePaper = async (id: string, data: { title: string; abstract: s
   return response.data;
 };
 
-//function for Faculty to change status
+// Update this function to accept comments
 export const updatePaperStatus = async (id: string, status: 'approved' | 'rejected', comments?: string) => {
+  // We send both status and comments to the backend
   const response = await api.put(`/papers/${id}`, { status, comments });
+  return response.data;
+};
+
+// CHECK PLAGIARISM
+export const checkPlagiarism = async (data: FormData) => {
+  // Use a longer timeout (30s) because scanning takes time
+  const response = await api.post('/plagiarism/check', data, { timeout: 30000 });
   return response.data;
 };
 
@@ -69,7 +89,7 @@ export const updateUser = async (id: string, data: {
   email: string; 
   role: string;
   department?: string;
-  password?: string; // <--- Added this
+  password?: string; 
 }) => {
   const response = await api.put(`/users/${id}`, data);
   return response.data;
@@ -80,6 +100,7 @@ export const deleteUser = async (id: string) => {
   return response.data;
 };
 
+// Update this function to accept the full object
 export const createUser = async (userData: { 
   name: string; 
   email: string; 
@@ -88,12 +109,5 @@ export const createUser = async (userData: {
   department?: string; 
 }) => {
   const response = await api.post('/users', userData);
-  return response.data;
-};
-
-// CHECK PLAGIARISM
-export const checkPlagiarism = async (data: FormData) => {
-  // Use a longer timeout (30s) because scanning takes time
-  const response = await api.post('/plagiarism/check', data, { timeout: 30000 });
   return response.data;
 };
