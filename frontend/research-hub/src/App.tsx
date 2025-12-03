@@ -1,34 +1,35 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { AuthProvider } from '@/hooks/useAuth';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Pages
-import Index from '@/pages/Index';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import Dashboard from '@/pages/Dashboard';
-import UploadResearch from '@/pages/UploadResearch';
-import Repository from '@/pages/Repository';
-import CheckPlagiarism from '@/pages/CheckPlagiarism';
-import PlagiarismCheck from '@/pages/PlagiarismCheck'; // This is the "Reports" page
-import MySubmissions from '@/pages/MySubmissions';
-import UserManagement from '@/pages/UserManagement';
-import NotFound from '@/pages/NotFound';
-import Profile from '@/pages/Profile'; // <--- Import Profile
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import UploadResearch from "./pages/UploadResearch";
+import Repository from "./pages/Repository";
+import PlagiarismCheck from "./pages/PlagiarismCheck"; // Reports page
+import CheckPlagiarism from "./pages/CheckPlagiarism"; // Scanner page
+import MySubmissions from "./pages/MySubmissions";
+import UserManagement from "./pages/UserManagement";
+import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 
-function App() {
-  return (
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <Router>
+      <BrowserRouter>
         <AuthProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
@@ -38,6 +39,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-submissions"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <MySubmissions />
                 </ProtectedRoute>
               }
             />
@@ -58,14 +67,6 @@ function App() {
               }
             />
             <Route
-              path="/check-plagiarism"
-              element={
-                <ProtectedRoute>
-                  <CheckPlagiarism />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/plagiarism"
               element={
                 <ProtectedRoute>
@@ -74,10 +75,10 @@ function App() {
               }
             />
             <Route
-              path="/my-submissions"
+              path="/check-plagiarism"
               element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <MySubmissions />
+                <ProtectedRoute>
+                  <CheckPlagiarism />
                 </ProtectedRoute>
               }
             />
@@ -89,9 +90,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* --- NEW PROFILE ROUTE --- */}
-            <Route
+             <Route
               path="/profile"
               element={
                 <ProtectedRoute>
@@ -100,13 +99,16 @@ function App() {
               }
             />
 
+            {/* --- FIX IS HERE: Redirect root to login --- */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
-      </Router>
+      </BrowserRouter>
     </TooltipProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;
