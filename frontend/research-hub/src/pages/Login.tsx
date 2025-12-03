@@ -45,7 +45,7 @@ export default function Login() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
             <img
-              src="public/ustp.png" 
+              src="/ustp.png" 
               alt="PUBLAZER Logo"
               className="w-20 h-20 object-contain drop-shadow-lg"
             />
