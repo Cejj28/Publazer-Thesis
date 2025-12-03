@@ -1,85 +1,79 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth'; // Uses your new Context
-import { loginUser } from '@/lib/api'; // ⚠️ Import the real API function
+import { useAuth } from '@/hooks/useAuth';
+import { loginUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { login } = useAuth(); // This now updates the global state + localStorage
+  const { login } = useAuth();
   const navigate = useNavigate();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // 1. Call the Real Backend
       const response = await loginUser({ email, password });
-
-      // 2. Update the Context (which saves to localStorage automatically)
       login(response.user);
 
-      // 3. Success Feedback
       toast.success(`Welcome back, ${response.user.name}!`, {
         description: `Logged in as ${response.user.role}`,
       });
 
-      // 4. Redirect
       navigate('/dashboard');
-
     } catch (error: any) {
       console.error("Login failed:", error);
-      
-      // 5. Error Feedback
       const errorMessage = error.response?.data?.error || 'Invalid credentials. Please try again.';
-      toast.error('Login Failed', {
-        description: errorMessage,
-      });
+      toast.error('Login Failed', { description: errorMessage });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
-      <div className="w-full max-w-md"> {/* Reduced width since we removed demo buttons */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
+      <div className="w-full max-w-md">
+
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-primary rounded-2xl shadow-lg">
-              <BookOpen className="w-12 h-12 text-primary-foreground" />
-            </div>
+          <div className="flex justify-center mb-3">
+            <img
+              src="public/ustp.png" 
+              alt="PUBLAZER Logo"
+              className="w-20 h-20 object-contain drop-shadow-lg"
+            />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">PUBLAZER</h1>
-          <p className="text-muted-foreground text-lg">
+
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">PUBLAZER</h1>
+          <p className="text-muted-foreground mt-1 text-base">
             Academic Repository & Plagiarism Detection System
           </p>
         </div>
 
-        <Card className="shadow-xl border-2">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl">Login to Your Account</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the system
-            </CardDescription>
+        {/* ====== LOGIN CARD ====== */}
+        <Card className="shadow-2xl border">
+          <CardHeader className="text-center pb-3">
+            <CardTitle className="text-2xl font-semibold">Login</CardTitle>
+            <CardDescription>Enter your credentials to access the system</CardDescription>
           </CardHeader>
+
           <CardContent>
-            <form onSubmit={handleManualLogin} className="space-y-4 mb-6">
-              <div className="space-y-2">
+            <form onSubmit={handleManualLogin} className="space-y-5">
+
+              {/* Email Field */}
+              <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your.email@university.edu"
+                  placeholder="Email Address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -87,7 +81,8 @@ export default function Login() {
                 />
               </div>
 
-              <div className="space-y-2">
+              {/* Password Field */}
+              <div className="space-y-1">
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
@@ -100,15 +95,17 @@ export default function Login() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              {/* Login Button */}
+              <Button type="submit" className="w-full py-5 text-base" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </form>
 
-            <div className="text-center">
+            {/* Register Link */}
+            <div className="text-center mt-4">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-primary hover:underline font-medium">
+                Don’t have an account?{' '}
+                <Link to="/register" className="text-primary font-medium hover:underline">
                   Register here
                 </Link>
               </p>

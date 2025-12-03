@@ -59,11 +59,15 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="p-4 bg-primary rounded-2xl shadow-lg">
-              <BookOpen className="w-12 h-12 text-primary-foreground" />
-            </div>
+            <div className="flex justify-center mb-3">
+            <img
+              src="public/ustp.png" 
+              alt="PUBLAZER Logo"
+              className="w-20 h-20 object-contain drop-shadow-lg"
+            />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Research Hub</h1>
+          </div>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Publazer</h1>
           <p className="text-muted-foreground text-lg">
             Create your student account
           </p>
@@ -82,7 +86,7 @@ export default function Register() {
                 <Label htmlFor="name">Full Name *</Label>
                 <Input
                   id="name"
-                  placeholder="John Doe"
+                  placeholder="Full Name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -94,7 +98,7 @@ export default function Register() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@university.edu"
+                  placeholder="email@****.****"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -105,7 +109,7 @@ export default function Register() {
                 <Label htmlFor="department">Department *</Label>
                 <Input
                   id="department"
-                  placeholder="Computer Science"
+                  placeholder="Department"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   required
