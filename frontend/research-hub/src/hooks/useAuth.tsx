@@ -68,8 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const hasAnyRole = (roles: UserRole[]): boolean => {
     if (!user) return false;
-    // Admins usually have access to everything, you can remove this if you want strict roles
-    if (user.role === 'admin') return true; 
+    
     return roles.includes(user.role);
   };
 
