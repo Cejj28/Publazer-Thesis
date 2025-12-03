@@ -7,6 +7,7 @@ const fs = require('fs');
 require('dotenv').config();
 const stringSimilarity = require('string-similarity');
 const pdf = require('pdf-parse');
+const bcrypt = require('bcryptjs');
 
 const User = require('./models/User');
 const Paper = require('./models/Paper');
@@ -16,7 +17,6 @@ const app = express();
 // --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
-
 // Serve static files (PDFs)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -36,7 +36,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-
 // --- DATABASE CONNECTION ---
 const MONGO_URI = "mongodb+srv://admin:admin123@publazer.arhmawq.mongodb.net/?appName=Publazer";
 
@@ -50,14 +49,23 @@ app.get('/', (req, res) => {
 
 // --- ROUTES ---
 
-// 1. REGISTER
+// 1. REGISTER (With Encryption)
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, department } = req.body; 
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ error: "Email already in use" });
 
-    const newUser = new User({ name, email, password, department });
+    // ENCRYPT PASSWORD
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({ 
+        name, 
+        email, 
+        password: hashedPassword, // Save the scrambled version
+        department 
+    });
+    
     await newUser.save();
     res.status(201).json({ message: "User registered successfully!" });
   } catch (error) {
@@ -65,13 +73,18 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// 2. LOGIN
+// 2. LOGIN (With Comparison)
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
-    if (user.password !== password) return res.status(400).json({ error: "Invalid password" });
+
+    // COMPARE ENCRYPTED PASSWORD
+    // We check if "password" matches the scrambled "user.password"
+    const isMatch = await bcrypt.compare(password, user.password);
+    
+    if (!isMatch) return res.status(400).json({ error: "Invalid password" });
 
     res.json({
       message: "Login successful",
@@ -285,7 +298,7 @@ app.put('/api/users/:id', async (req, res) => {
 
     // 2. Only update password if the admin typed something new
     if (password && password.trim() !== "") {
-      updateData.password = password;
+      updateData.password = await bcrypt.hash(password, 10); // Encrypt new password
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -310,29 +323,23 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
-// 11. CREATE USER (Admin Feature - Custom Password)
+// 11. CREATE USER (Admin - Secure)
 app.post('/api/users', async (req, res) => {
   try {
-    // Now accepting password and department from the admin
     const { name, email, password, role, department } = req.body;
-
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email already in use" });
-    }
+    if (existingUser) return res.status(400).json({ error: "Email already in use" });
+
+    const hashedPassword = await bcrypt.hash(password, 10); // Encrypt
 
     const newUser = new User({
-      name,
-      email,
-      password, // <--- Using the manual password
-      role,
-      department: department || "General",
+      name, email, role, department: department || "General",
+      password: hashedPassword
     });
 
     await newUser.save();
     res.status(201).json(newUser);
   } catch (error) {
-    console.error("Create User Error:", error);
     res.status(500).json({ error: "Failed to create user" });
   }
 });
