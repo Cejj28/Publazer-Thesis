@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
+import logoImage from '../assets/ustp.png';
+
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -60,12 +62,12 @@ export default function Register() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="flex justify-center mb-3">
-            <img
-              src="/ustp.png" 
-              alt="PUBLAZER Logo"
-              className="w-20 h-20 object-contain drop-shadow-lg"
-            />
-          </div>
+              <img
+                src={logoImage}  
+                alt="PUBLAZER Logo"
+                className="w-20 h-20 object-contain drop-shadow-lg"
+              />
+            </div>
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-2">Publazer</h1>
           <p className="text-muted-foreground text-lg">

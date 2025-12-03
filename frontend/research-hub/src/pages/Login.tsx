@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
+import logoImage from '../assets/ustp.png';
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ export default function Login() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
             <img
-              src="/ustp.png" 
+              src={logoImage}  
               alt="PUBLAZER Logo"
               className="w-20 h-20 object-contain drop-shadow-lg"
             />
