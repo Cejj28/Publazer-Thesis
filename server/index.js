@@ -29,7 +29,7 @@ const upload = multer({ storage: storage });
 
 // --- DB CONNECTION ---
 // Replace with your actual MongoDB URI
-const MONGO_URI = "mongodb+srv://admin:admin123@publazer.arhmawq.mongodb.net/?appName=Publazer";
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://admin:admin123@publazer.arhmawq.mongodb.net/?appName=Publazer";
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ DB Connected"))
   .catch(err => console.error(err));
@@ -263,6 +263,7 @@ app.post('/api/plagiarism/check', upload.single("file"), async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log('🚀 Server is running on port 3001');
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
