@@ -243,46 +243,66 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 11. PLAGIARISM CHECK (UPDATED FOR MEMORY)
-// We use 'uploadToMemory' here to avoid saving temporary scan files to disk
-app.post('/api/plagiarism/check', uploadToMemory.single("file"), async (req, res) => {
-  try {
-    const { text } = req.body;
-    let textToCheck = text || "";
+// 11. PLAGIARISM CHECK (Safer Version)
+app.post('/api/plagiarism/check', (req, res) => {
+  uploadToMemory.single("file")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: `Upload Error: ${err.message}` });
 
-    if (req.file) {
-      // FIX: Read directly from buffer (RAM) instead of looking for a file on disk
-      const pdfData = await pdf(req.file.buffer);
-      textToCheck = pdfData.text;
-    }
+    try {
+      let textToCheck = req.body.text || "";
 
-    if (!textToCheck || textToCheck.length < 50) {
-      return res.status(400).json({ error: "Text is too short to scan (min 50 chars)" });
-    }
-
-    const allPapers = await Paper.find({}, 'title abstract');
-    let highestScore = 0;
-    let matchedSources = [];
-
-    allPapers.forEach(paper => {
-      const abstractSimilarity = stringSimilarity.compareTwoStrings(textToCheck, paper.abstract);
-      const score = Math.round(abstractSimilarity * 100);
-      if (score > 5) {
-        if (score > highestScore) highestScore = score;
-        matchedSources.push({ source: paper.title, percentage: score, url: "Internal Repository" });
+      // 1. Safe PDF Parsing
+      if (req.file) {
+        try {
+          // console.log("📄 Parsing PDF...");
+          const pdfData = await pdf(req.file.buffer);
+          
+          if (!pdfData || !pdfData.text) {
+            throw new Error("PDF parsed but returned no text.");
+          }
+          textToCheck = pdfData.text;
+          
+        } catch (pdfError) {
+          console.error("❌ PDF Parse Failed:", pdfError);
+          return res.status(400).json({ 
+            error: "Cannot read this PDF. It might be an image scan or encrypted. Please copy-paste the text instead." 
+          });
+        }
       }
-    });
 
-    matchedSources.sort((a, b) => b.percentage - a.percentage);
-    res.json({
-      overallScore: highestScore,
-      matchedSources: matchedSources.slice(0, 5),
-      details: `Scanned against ${allPapers.length} documents.`
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Scan failed" });
-  }
+      // 2. Validate Text Length
+      const cleanText = textToCheck.replace(/\s+/g, ' ').trim();
+      if (cleanText.length < 50) {
+        return res.status(400).json({ error: "Text is too short (or PDF is empty/scanned)." });
+      }
+
+      // 3. Compare (Your existing logic)
+      const allPapers = await Paper.find({}, 'title abstract');
+      let highestScore = 0;
+      let matchedSources = [];
+
+      allPapers.forEach(paper => {
+        if (!paper.abstract) return;
+        const similarity = stringSimilarity.compareTwoStrings(cleanText, paper.abstract);
+        const score = Math.round(similarity * 100);
+        if (score > 5) {
+          if (score > highestScore) highestScore = score;
+          matchedSources.push({ source: paper.title, percentage: score, url: "Repository" });
+        }
+      });
+
+      matchedSources.sort((a, b) => b.percentage - a.percentage);
+      res.json({
+        overallScore: highestScore,
+        matchedSources: matchedSources.slice(0, 5),
+        details: `Scanned against ${allPapers.length} papers.`
+      });
+
+    } catch (error) {
+      console.error("❌ Critical Server Error:", error);
+      res.status(500).json({ error: "Server Error: " + (error.message || "Unknown") });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3001;
