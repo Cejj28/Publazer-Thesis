@@ -118,7 +118,7 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
           <div className="bg-muted/20 rounded-lg border h-[400px] flex flex-col items-center justify-center p-4">
             {paper.fileName ? (
               <iframe
-                src={`${API_BASE_URL}/uploads/${encodeURIComponent(paper.fileName)}`}
+                src={paper.fileName}
                 className="w-full h-full rounded bg-white shadow-sm"
                 title="PDF Preview"
               />
@@ -136,7 +136,7 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
             </Button>
             <Button asChild>
               <a 
-                href={`${API_BASE_URL}/uploads/${paper.fileName}`} 
+                href={paper.fileName}
                 target="_blank" 
                 rel="noopener noreferrer"
                 download
