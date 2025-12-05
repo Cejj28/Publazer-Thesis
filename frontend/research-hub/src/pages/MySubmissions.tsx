@@ -180,7 +180,7 @@ export default function MySubmissions() {
 
                   <CardFooter className="bg-muted/10 border-t p-4 flex justify-between items-center">
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`http://localhost:3001/uploads/${paper.fileName}`} target="_blank" rel="noreferrer">
+                      <a href={paper.fileName} target="_blank" rel="noreferrer">
                         <Eye className="w-4 h-4 mr-2" /> View PDF
                       </a>
                     </Button>

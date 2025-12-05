@@ -157,7 +157,12 @@ export default function Repository() {
                   </Button>
                   
                   <Button variant="outline" className="flex-1" asChild onClick={(e) => e.stopPropagation()}>
-                    <a href={`${API_URL}/uploads/${encodeURIComponent(paper.fileName)}`} download>
+                    <a 
+                      // FIX: Use paper.fileName directly
+                      href={paper.fileName} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                    >
                       <Download className="w-4 h-4 mr-2" /> Download
                     </a>
                   </Button>
