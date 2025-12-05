@@ -4,11 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Calendar, User, Eye, Download } from 'lucide-react';
-import { getPapers } from '@/lib/api';
+import { Search, Calendar, User, Eye, Download, Trash2, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { getPapers, deletePaper } from '@/lib/api';
 import { toast } from 'sonner';
-// 1. Import the Detail Component
+import { useAuth } from '@/hooks/useAuth';
 import { PaperDetail } from '@/components/PaperDetail';
+
+// 1. Import Alert Dialog Components
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ResearchPaper {
   _id: string;
@@ -24,14 +36,17 @@ interface ResearchPaper {
 }
 
 export default function Repository() {
+  const { hasRole } = useAuth();
+  
   const [papers, setPapers] = useState<ResearchPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
-  // 2. Add State for the Popup
   const [selectedPaper, setSelectedPaper] = useState<ResearchPaper | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // 2. Add State for Deletion Confirmation
+  const [paperToDelete, setPaperToDelete] = useState<ResearchPaper | null>(null);
 
   const fetchPapers = async (query = '') => {
     setLoading(true);
@@ -58,10 +73,26 @@ export default function Repository() {
     fetchPapers(searchQuery);
   };
 
-  // 3. Helper to open the popup
   const handleViewPaper = (paper: ResearchPaper) => {
     setSelectedPaper(paper);
     setDetailOpen(true);
+  };
+
+  // 3. New Function to Execute Delete (Called when user clicks "Continue" in popup)
+  const executeDelete = async () => {
+    if (!paperToDelete) return;
+
+    try {
+      await deletePaper(paperToDelete._id);
+      toast.success("Paper deleted successfully");
+      // Remove from UI immediately
+      setPapers((prev) => prev.filter((p) => p._id !== paperToDelete._id));
+    } catch (error) {
+      console.error("Delete failed", error);
+      toast.error("Failed to delete paper");
+    } finally {
+      setPaperToDelete(null); // Close the popup
+    }
   };
 
   return (
@@ -102,7 +133,6 @@ export default function Repository() {
             {papers.map((paper) => (
               <Card 
                 key={paper._id} 
-                // 4. Make the Card Clickable
                 className="flex flex-col hover:shadow-lg transition-all duration-200 cursor-pointer group border-transparent hover:border-primary/20"
                 onClick={() => handleViewPaper(paper)}
               >
@@ -147,37 +177,74 @@ export default function Repository() {
                   )}
                 </CardContent>
 
-                <CardFooter className="border-t bg-muted/5 p-4 gap-2">
-                  {/* Note: e.stopPropagation() prevents the card click from triggering when you click the button */}
+                <CardFooter className="border-t bg-muted/5 p-4 gap-2 flex-wrap">
                   <Button variant="default" className="flex-1" onClick={(e) => {
                     e.stopPropagation(); 
                     handleViewPaper(paper);
                   }}>
-                    <Eye className="w-4 h-4 mr-2" /> View Details
+                    <Eye className="w-4 h-4 mr-2" /> View
                   </Button>
                   
                   <Button variant="outline" className="flex-1" asChild onClick={(e) => e.stopPropagation()}>
                     <a 
-                      // FIX: Use paper.fileName directly
                       href={paper.fileName} 
                       target="_blank" 
                       rel="noopener noreferrer" 
                     >
-                      <Download className="w-4 h-4 mr-2" /> Download
+                      <Download className="w-4 h-4 mr-2" /> PDF
                     </a>
                   </Button>
+
+                  {/* 4. Delete Button just opens the Popup */}
+                  {hasRole('admin') && (
+                    <Button 
+                      variant="destructive" 
+                      size="icon"
+                      className="shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Stop card click
+                        setPaperToDelete(paper); // Open confirmation
+                      }}
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             ))}
           </div>
         )}
 
-        {/* 5. Render the Detail Modal at the bottom */}
         <PaperDetail 
           paper={selectedPaper}
           open={detailOpen}
           onOpenChange={setDetailOpen}
         />
+
+        {/* 5. The Confirmation Popup */}
+        <AlertDialog open={!!paperToDelete} onOpenChange={(open) => !open && setPaperToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription>
+                Are you sure you want to delete the paper <span className="font-semibold text-foreground">"{paperToDelete?.title}"</span>?
+                <br /><br />
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={executeDelete} className="bg-destructive hover:bg-destructive/90">
+                Delete Paper
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
       </div>
     </DashboardLayout>
   );
