@@ -57,7 +57,7 @@ export default function CheckPlagiarism() {
         formData.append('text', textContent);
       }
       if (selectedFile) {
-        formData.append('file', selectedFile);
+        formData.append('file', selectedFile, selectedFile.name);
       }
 
       // --- CALL REAL BACKEND ---
@@ -67,8 +67,16 @@ export default function CheckPlagiarism() {
 
     } catch (error: any) {
       console.error(error);
-      const msg = error.response?.data?.error || "Scan failed. Please try again.";
-      toast.error(msg);
+      const errorMsg = error.response?.data?.error || "Scan failed. Please try again.";
+
+      // Handle specific PDF parsing errors with better messaging
+      if (errorMsg.includes("Cannot read this PDF") || errorMsg.includes("image scan")) {
+        toast.error("Scanned PDFs cannot be processed. Please copy and paste the text content instead.", {
+          duration: 6000, // Show longer for important messages
+        });
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setScanning(false);
     }

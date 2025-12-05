@@ -243,67 +243,95 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 11. PLAGIARISM CHECK (Safer Version)
-app.post('/api/plagiarism/check', (req, res) => {
-  uploadToMemory.single("file")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: `Upload Error: ${err.message}` });
+// 11. PLAGIARISM CHECK (Supports TEXT + PDF)
+app.post('/api/plagiarism/check', uploadToMemory.single("file"), async (req, res) => {
+  try {
+    let textToCheck = "";
 
-    try {
-      let textToCheck = req.body.text || "";
+    // 🅰 If text was provided
+    if (req.body.text && req.body.text.trim().length > 0) {
+      textToCheck = req.body.text.replace(/\s+/g, " ").trim();
+    }
 
-      // 1. Safe PDF Parsing
-      if (req.file) {
-        try {
-          // console.log("📄 Parsing PDF...");
-          const pdfData = await pdf(req.file.buffer);
-          
-          if (!pdfData || !pdfData.text) {
-            throw new Error("PDF parsed but returned no text.");
-          }
-          textToCheck = pdfData.text;
-          
-        } catch (pdfError) {
-          console.error("❌ PDF Parse Failed:", pdfError);
-          return res.status(400).json({ 
-            error: "Cannot read this PDF. It might be an image scan or encrypted. Please copy-paste the text instead." 
+    // 🅱 If a PDF file was uploaded → extract text
+    if (req.file) {
+      console.log("📄 PDF uploaded:", req.file.originalname);
+      console.log("📄 File size:", req.file.size);
+      console.log("📄 MIME type:", req.file.mimetype);
+
+      // Check if file is actually a PDF
+      if (req.file.mimetype !== 'application/pdf') {
+        return res.status(400).json({ error: "Uploaded file must be a PDF." });
+      }
+
+      try {
+        console.log("🔄 Starting PDF parsing...");
+        const pdfData = await pdf(req.file.buffer);
+        console.log("✅ PDF parsed successfully");
+        console.log("📊 PDF info:", pdfData.numpages, "pages,", pdfData.text.length, "characters");
+
+        const extracted = pdfData.text.replace(/\s+/g, " ").trim();
+        console.log("📝 Extracted text length:", extracted.length);
+        console.log("📝 First 200 chars:", extracted.substring(0, 200));
+
+        if (extracted.length < 50) {
+          return res.status(400).json({
+            error: "Cannot read this PDF - it might be an image scan or encrypted. Please copy and paste the text instead, or use a text-based PDF file."
           });
         }
+
+        textToCheck = extracted;
+        console.log("📌 Final text to check length:", textToCheck.length);
+      } catch (pdfError) {
+        console.error("❌ PDF Parsing Error:", pdfError);
+        return res.status(400).json({ error: "Failed to extract text from PDF. Please ensure the PDF is not corrupted and contains readable text." });
       }
-
-      // 2. Validate Text Length
-      const cleanText = textToCheck.replace(/\s+/g, ' ').trim();
-      if (cleanText.length < 50) {
-        return res.status(400).json({ error: "Text is too short (or PDF is empty/scanned)." });
-      }
-
-      // 3. Compare (Your existing logic)
-      const allPapers = await Paper.find({}, 'title abstract');
-      let highestScore = 0;
-      let matchedSources = [];
-
-      allPapers.forEach(paper => {
-        if (!paper.abstract) return;
-        const similarity = stringSimilarity.compareTwoStrings(cleanText, paper.abstract);
-        const score = Math.round(similarity * 100);
-        if (score > 5) {
-          if (score > highestScore) highestScore = score;
-          matchedSources.push({ source: paper.title, percentage: score, url: "Repository" });
-        }
-      });
-
-      matchedSources.sort((a, b) => b.percentage - a.percentage);
-      res.json({
-        overallScore: highestScore,
-        matchedSources: matchedSources.slice(0, 5),
-        details: `Scanned against ${allPapers.length} papers.`
-      });
-
-    } catch (error) {
-      console.error("❌ Critical Server Error:", error);
-      res.status(500).json({ error: "Server Error: " + (error.message || "Unknown") });
     }
-  });
+
+    // ❗ Prevent empty scans
+    if (!textToCheck || textToCheck.length < 50) {
+      return res.status(400).json({ error: "Please paste a longer text or upload a valid PDF." });
+    }
+
+    console.log(`🔍 Scanning text (${textToCheck.length} chars)...`);
+
+    // --- SIMILARITY CHECK ---
+    const allPapers = await Paper.find({}, 'title abstract');
+    let highestScore = 0;
+    let matchedSources = [];
+
+    allPapers.forEach(paper => {
+      if (!paper.abstract) return;
+
+      const similarity = stringSimilarity.compareTwoStrings(textToCheck, paper.abstract);
+      const percentage = Math.round(similarity * 100);
+
+      if (percentage > 5) {
+        highestScore = Math.max(highestScore, percentage);
+
+        matchedSources.push({
+          source: paper.title,
+          percentage,
+          url: "Internal Repository"
+        });
+      }
+    });
+
+    matchedSources.sort((a, b) => b.percentage - a.percentage);
+
+    // --- Send Scan Results ---
+    res.json({
+      overallScore: highestScore,
+      matchedSources: matchedSources.slice(0, 5),
+      details: `Scanned against ${allPapers.length} documents.`,
+    });
+
+  } catch (error) {
+    console.error("❌ Scan Error:", error);
+    res.status(500).json({ error: "Server error during scan" });
+  }
 });
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

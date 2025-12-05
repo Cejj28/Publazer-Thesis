@@ -72,10 +72,8 @@ export const updatePaperStatus = async (id: string, status: 'approved' | 'reject
 };
 
 // CHECK PLAGIARISM
-export const checkPlagiarism = async (data: FormData) => {
-  // Use a longer timeout (30s) because scanning takes time
-  const response = await api.post('/plagiarism/check', data, { timeout: 120000 });
-  return response.data;
+export const checkPlagiarism = async (formData: FormData) => {
+  return api.post("/plagiarism/check", formData).then(res => res.data);
 };
 
 // USER MANAGEMENT FUNCTIONS
