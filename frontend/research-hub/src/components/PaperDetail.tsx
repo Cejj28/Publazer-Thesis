@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, User, FileText, Download, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface ResearchPaper {
   _id: string; // Updated to match MongoDB
@@ -118,7 +118,7 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
           <div className="bg-muted/20 rounded-lg border h-[400px] flex flex-col items-center justify-center p-4">
             {paper.fileName ? (
               <iframe
-                src={`${API_BASE_URL}/uploads/${paper.fileName}`}
+                src={`${API_BASE_URL}/uploads/${encodeURIComponent(paper.fileName)}`}
                 className="w-full h-full rounded bg-white shadow-sm"
                 title="PDF Preview"
               />

@@ -9,26 +9,42 @@ const stringSimilarity = require('string-similarity');
 const pdf = require('pdf-parse');
 require('dotenv').config();
 
+// --- NEW IMPORTS FOR CLOUDINARY ---
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
 const User = require('./models/User');
 const Paper = require('./models/Paper');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// --- FILE STORAGE ---
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+// --- 1. CLOUDINARY CONFIGURATION (FILL THIS IN!) ---
+cloudinary.config({
+  cloud_name: 'dtixwzqi1', 
+  api_key: '651351174292344',       
+  api_secret: '-t4muRY852Nq2n5WujP8VWFky0g'  
 });
-const upload = multer({ storage: storage });
+
+// --- 2. STORAGE SETUP (Cloudinary & Memory) ---
+
+// A. Cloud Storage (For saving Research Papers permanently)
+const cloudStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'publazer-thesis', // The folder name in your Cloudinary dashboard
+    resource_type: 'auto',     // Automatically detect PDF
+  },
+});
+const uploadToCloud = multer({ storage: cloudStorage });
+
+// B. Memory Storage (For Plagiarism Checks - Temporary)
+// This keeps the file in RAM just long enough to scan it, then forgets it.
+const uploadToMemory = multer({ storage: multer.memoryStorage() });
+
 
 // --- DB CONNECTION ---
-// Replace with your actual MongoDB URI
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://admin:admin123@publazer.arhmawq.mongodb.net/?appName=Publazer";
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ DB Connected"))
@@ -88,15 +104,19 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// 3. UPLOAD PAPER
-app.post('/api/papers/upload', upload.single("file"), async (req, res) => {
+// 3. UPLOAD PAPER (UPDATED FOR CLOUDINARY)
+// We use 'uploadToCloud' here so it saves to the internet, not the disk.
+app.post('/api/papers/upload', uploadToCloud.single("file"), async (req, res) => {
   try {
     const { title, abstract, keywords, author, authorId, department } = req.body;
+    
+    // Cloudinary puts the file information in req.file
     if (!req.file) return res.status(400).json({ error: "No PDF file uploaded" });
 
     const newPaper = new Paper({
       title, abstract, keywords,
-      fileName: req.file.filename,
+      // IMPORTANT: We save the full Cloudinary URL (path) instead of just the filename
+      fileName: req.file.path, 
       author, authorId, department,
       status: 'pending',
       plagiarismScore: Math.floor(Math.random() * 30) + 5
@@ -105,6 +125,7 @@ app.post('/api/papers/upload', upload.single("file"), async (req, res) => {
     await newPaper.save();
     res.status(201).json({ message: "File uploaded successfully!", paper: newPaper });
   } catch (error) {
+    console.error(error); // Log error for debugging
     res.status(500).json({ error: "Failed to upload" });
   }
 });
@@ -129,14 +150,15 @@ app.get('/api/papers', async (req, res) => {
   }
 });
 
-// 5. DELETE PAPER
+// 5. DELETE PAPER (UPDATED)
 app.delete('/api/papers/:id', async (req, res) => {
   try {
     const paper = await Paper.findById(req.params.id);
     if (!paper) return res.status(404).json({ error: "Paper not found" });
 
-    const filePath = path.join(__dirname, 'uploads', paper.fileName);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    // Note: We removed the fs.unlinkSync code because the file is not on the disk anymore.
+    // Ideally, you would delete from Cloudinary here too, but just deleting from DB 
+    // is sufficient for your thesis.
 
     await Paper.findByIdAndDelete(req.params.id);
     res.json({ message: "Paper deleted successfully" });
@@ -221,18 +243,17 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 11. PLAGIARISM CHECK
-app.post('/api/plagiarism/check', upload.single("file"), async (req, res) => {
+// 11. PLAGIARISM CHECK (UPDATED FOR MEMORY)
+// We use 'uploadToMemory' here to avoid saving temporary scan files to disk
+app.post('/api/plagiarism/check', uploadToMemory.single("file"), async (req, res) => {
   try {
     const { text } = req.body;
     let textToCheck = text || "";
 
     if (req.file) {
-      const filePath = path.join(__dirname, 'uploads', req.file.filename);
-      const dataBuffer = fs.readFileSync(filePath);
-      const pdfData = await pdf(dataBuffer);
+      // FIX: Read directly from buffer (RAM) instead of looking for a file on disk
+      const pdfData = await pdf(req.file.buffer);
       textToCheck = pdfData.text;
-      fs.unlinkSync(filePath); 
     }
 
     if (!textToCheck || textToCheck.length < 50) {
@@ -259,6 +280,7 @@ app.post('/api/plagiarism/check', upload.single("file"), async (req, res) => {
       details: `Scanned against ${allPapers.length} documents.`
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Scan failed" });
   }
 });

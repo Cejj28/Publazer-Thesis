@@ -27,6 +27,7 @@ export default function Repository() {
   const [papers, setPapers] = useState<ResearchPaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
   // 2. Add State for the Popup
   const [selectedPaper, setSelectedPaper] = useState<ResearchPaper | null>(null);
@@ -156,7 +157,7 @@ export default function Repository() {
                   </Button>
                   
                   <Button variant="outline" className="flex-1" asChild onClick={(e) => e.stopPropagation()}>
-                    <a href={`http://localhost:3001/uploads/${paper.fileName}`} download>
+                    <a href={`${API_URL}/uploads/${encodeURIComponent(paper.fileName)}`} download>
                       <Download className="w-4 h-4 mr-2" /> Download
                     </a>
                   </Button>
