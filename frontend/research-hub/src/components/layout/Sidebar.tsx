@@ -8,8 +8,7 @@ import {
   FileCheck,
   Users,
   LogOut,
-  BookOpen,
-  UserCog // Import Icon
+  UserCog 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// 1. Import your logo here
+import logoImage from '../../assets/ustp.png';
 
 export const Sidebar = () => {
   const { user, logout, hasAnyRole } = useAuth();
@@ -70,23 +72,27 @@ export const Sidebar = () => {
       href: '/users',
       roles: ['admin'],
     },
-    // --- NEW PROFILE LINK ---
     {
       label: 'My Profile',
       icon: UserCog,
       href: '/profile',
-      roles: ['student', 'faculty', 'admin'], // Everyone can see this
+      roles: ['student', 'faculty', 'admin'], 
     },
   ];
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col h-screen sticky top-0">
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-8 h-8 text-primary" />
+        <div className="flex items-center gap-3">
+          {/* 2. Replaced BookOpen icon with your Logo Image */}
+          <img 
+            src={logoImage} 
+            alt="Logo" 
+            className="w-10 h-10 object-contain drop-shadow-sm"
+          />
           <div>
-            <h1 className="font-bold text-lg text-foreground">Research Hub</h1>
-            <p className="text-xs text-muted-foreground">Repository System</p>
+            <h1 className="font-bold text-lg text-foreground leading-tight">PUBLAZER</h1>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Repository System</p>
           </div>
         </div>
       </div>
@@ -118,7 +124,6 @@ export const Sidebar = () => {
           </p>
         </div>
 
-        {/* --- LOGOUT CONFIRMATION --- */}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
