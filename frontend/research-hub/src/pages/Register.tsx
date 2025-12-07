@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser } from '../lib/api'; // Import the new API function
+import { registerUser } from '../lib/api'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 import logoImage from '../assets/ustp.png';
 
 export default function Register() {
   const navigate = useNavigate();
+  // 1. Add Loading State
+  const [isLoading, setIsLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,7 +25,7 @@ export default function Register() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Client-side Validation
+    // Client-side Validation
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -34,8 +36,10 @@ export default function Register() {
       return;
     }
 
+    // 2. Start Loading
+    setIsLoading(true);
+
     try {
-      // 2. Send data to the Real Backend
       await registerUser({
         name: formData.name, 
         email: formData.email,
@@ -49,10 +53,12 @@ export default function Register() {
       
       navigate('/login');
     } catch (error: any) {
-      // 3. Handle Backend Errors (e.g., "Email already in use")
       console.error(error);
       const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
       toast.error(errorMessage);
+    } finally {
+      // 3. Stop Loading (runs whether success or fail)
+      setIsLoading(false);
     }
   };
 
@@ -92,6 +98,7 @@ export default function Register() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  disabled={isLoading} // Disable input during loading
                 />
               </div>
 
@@ -104,6 +111,7 @@ export default function Register() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -115,9 +123,9 @@ export default function Register() {
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   required
+                  disabled={isLoading}
                 />
               </div>
-
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password *</Label>
@@ -128,6 +136,7 @@ export default function Register() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -140,11 +149,13 @@ export default function Register() {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Register
+              {/* 4. Update Button Logic */}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Registering..." : "Register"}
               </Button>
             </form>
 
