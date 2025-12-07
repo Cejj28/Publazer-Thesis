@@ -110,3 +110,21 @@ export const createUser = async (userData: {
   return response.data;
 };
 
+export interface NotificationItem {
+  _id: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const getNotifications = async (userId: string) => {
+  const response = await api.get('/notifications', { params: { userId } });
+  return response.data;
+};
+
+export const markNotificationRead = async (id: string) => {
+  const response = await api.put(`/notifications/${id}/read`);
+  return response.data;
+};

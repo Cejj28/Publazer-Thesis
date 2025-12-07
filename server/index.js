@@ -15,6 +15,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const User = require('./models/User');
 const Paper = require('./models/Paper');
+const Notification = require('./models/Notification');
 
 const app = express();
 app.use(cors());
@@ -123,6 +124,19 @@ app.post('/api/papers/upload', uploadToCloud.single("file"), async (req, res) =>
     });
 
     await newPaper.save();
+
+    // 🔔 NOTIFY FACULTY & ADMINS
+    const reviewers = await User.find({ role: { $in: ['faculty', 'admin'] } });
+    const notifications = reviewers.map(reviewer => ({
+      recipientId: reviewer._id,
+      message: `New Submission: "${title}" by ${author}`,
+      type: 'info',
+      link: '/dashboard' // Directs them to review page
+    }));
+    if (notifications.length > 0) {
+      await Notification.insertMany(notifications);
+    }
+
     res.status(201).json({ message: "File uploaded successfully!", paper: newPaper });
   } catch (error) {
     console.error(error); // Log error for debugging
@@ -170,17 +184,64 @@ app.delete('/api/papers/:id', async (req, res) => {
 // 6. UPDATE PAPER (Status & Comments)
 app.put('/api/papers/:id', async (req, res) => {
   try {
-    const { title, abstract, keywords, status, comments } = req.body;
+    const { title, abstract, keywords, status, comments, reviewerName } = req.body;
+    
+    // 1. Prepare fields to update directly
     const updateData = {};
     if (title) updateData.title = title;
     if (abstract) updateData.abstract = abstract;
     if (keywords) updateData.keywords = keywords;
     if (status) updateData.status = status;
-    if (comments !== undefined) updateData.comments = comments;
 
-    const updatedPaper = await Paper.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    // 2. Perform the update
+    // We use $set for basic fields and $push to add a new comment to the list
+    const updateQuery = { $set: updateData };
+
+    if (comments) {
+      updateQuery.$push = {
+        comments: {
+          text: comments,
+          reviewerName: reviewerName || "Faculty", // You can pass the faculty name from the frontend
+          date: new Date()
+        }
+      };
+    }
+
+    const updatedPaper = await Paper.findByIdAndUpdate(
+      req.params.id, 
+      updateQuery, 
+      { new: true }
+    );
+
+    // 🔔 NOTIFY STUDENT (AUTHOR)
+    if (updatedPaper) {
+      let message = "";
+      let type = "info";
+
+      if (status === 'approved') {
+        message = `Good news! Your paper "${updatedPaper.title}" has been APPROVED.`;
+        type = "success";
+      } else if (status === 'rejected') {
+        message = `Update: Your paper "${updatedPaper.title}" was returned. Check comments.`;
+        type = "warning";
+      } else if (comments) {
+        message = `New feedback received on "${updatedPaper.title}".`;
+        type = "info";
+      }
+
+      if (message) {
+        await Notification.create({
+          recipientId: updatedPaper.authorId,
+          message: message,
+          type: type,
+          link: '/my-submissions'
+        });
+      }
+    }
+
     res.json(updatedPaper);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Error updating paper" });
   }
 });
@@ -332,6 +393,31 @@ app.post('/api/plagiarism/check', uploadToMemory.single("file"), async (req, res
   }
 });
 
+// 12. --- NOTIFICATION ROUTES ---
+
+// 1. GET Notifications for a User
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    // Get last 20 notifications, sorted by newest
+    const notifications = await Notification.find({ recipientId: userId })
+      .sort({ createdAt: -1 })
+      .limit(20);
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching notifications" });
+  }
+});
+
+// 2. Mark Notification as Read
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    await Notification.findByIdAndUpdate(req.params.id, { read: true });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating notification" });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

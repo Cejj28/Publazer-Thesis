@@ -282,11 +282,6 @@ export default function Dashboard() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                          <a href={`http://localhost:3001/uploads/${paper.fileName}`} target="_blank" rel="noreferrer">
-                            <Eye className="w-4 h-4 mr-2" /> View PDF
-                          </a>
-                        </Button>
                         <div className="h-8 w-px bg-border hidden md:block" />
                         
                         <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" 
