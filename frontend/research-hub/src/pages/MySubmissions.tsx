@@ -17,10 +17,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Eye, Calendar, AlertCircle, CheckCircle2, Clock, Trash2, Pencil, Save } from 'lucide-react';
+import { FileText, Eye, Calendar, AlertCircle, CheckCircle2, Clock, Trash2, Pencil, Save, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getPapers, deletePaper, updatePaper } from '@/lib/api';
 import { toast } from 'sonner';
+
+// 1. UPDATE INTERFACE
+interface Comment {
+  text: string;
+  reviewerName: string;
+  date: string;
+}
 
 interface ResearchPaper {
   _id: string;
@@ -31,7 +38,8 @@ interface ResearchPaper {
   author: string;
   uploadDate: string;
   status: string;
-  comments?: string;
+  // Change this from 'string' to 'Comment[]'
+  comments?: Comment[]; 
 }
 
 export default function MySubmissions() {
@@ -160,18 +168,35 @@ export default function MySubmissions() {
                       </div>
                     )}
 
-                    {/* --- FACULTY FEEDBACK SECTION --- */}
-                    {paper.comments && (
-                      <div className={`mt-4 p-3 rounded-lg border text-sm ${
+                    {/* --- UPDATED FACULTY FEEDBACK SECTION --- */}
+                    {paper.comments && paper.comments.length > 0 && (
+                      <div className={`mt-4 p-4 rounded-lg border text-sm space-y-3 ${
                         paper.status === 'rejected' 
-                          ? 'bg-red-50 border-red-200 text-red-800' 
-                          : 'bg-green-50 border-green-200 text-green-800'
+                          ? 'bg-red-50 border-red-200' 
+                          : 'bg-orange-50 border-orange-200'
                       }`}>
-                        <div className="font-semibold flex items-center gap-2 mb-1">
+                        <div className={`font-semibold flex items-center gap-2 ${
+                           paper.status === 'rejected' ? 'text-red-900' : 'text-orange-900'
+                        }`}>
                           <AlertCircle className="w-4 h-4" />
                           Faculty Feedback:
                         </div>
-                        <p>{paper.comments}</p>
+                        
+                        {/* 2. MAP THROUGH COMMENTS */}
+                        <div className="space-y-2">
+                          {paper.comments.map((comment, idx) => (
+                            <div key={idx} className="bg-white/80 p-3 rounded border shadow-sm">
+                               <div className="flex justify-between items-center mb-1 text-xs opacity-70">
+                                  <span className="font-semibold flex items-center gap-1">
+                                    <User className="w-3 h-3" /> 
+                                    {comment.reviewerName || 'Faculty'}
+                                  </span>
+                                  <span>{new Date(comment.date).toLocaleDateString()}</span>
+                               </div>
+                               <p className="text-foreground/90">{comment.text}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {/* -------------------------------- */}
