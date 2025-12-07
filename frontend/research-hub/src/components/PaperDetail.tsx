@@ -1,13 +1,18 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, User, FileText, Download, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar, User, FileText, Download, AlertCircle } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// 1. UPDATE INTERFACE
+interface Comment {
+  text: string;
+  reviewerName: string;
+  date: string;
+}
 
 interface ResearchPaper {
-  _id: string; // Updated to match MongoDB
+  _id: string;
   title: string;
   abstract: string;
   keywords: string;
@@ -16,6 +21,8 @@ interface ResearchPaper {
   uploadDate: string;
   status: string;
   plagiarismScore: number;
+  // Change this from 'string' to 'Comment[]'
+  comments?: Comment[]; 
 }
 
 interface PaperDetailProps {
@@ -91,9 +98,35 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
             </div>
           </div>
 
+          {/* FACULTY COMMENTS SECTION (UPDATED) */}
+          {paper.comments && paper.comments.length > 0 && (
+            <div className="bg-orange-50/50 border border-orange-100 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-orange-900 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" /> 
+                Faculty Feedback
+              </h3>
+              
+              <div className="space-y-3">
+                {/* 2. UPDATE RENDERING LOGIC: Map through the array */}
+                {paper.comments.map((comment, index) => (
+                  <div key={index} className="bg-white p-3 rounded border border-orange-100 shadow-sm text-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-orange-800 text-xs">
+                        {comment.reviewerName || "Faculty"}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(comment.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{comment.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <h3 className="font-semibold text-foreground mb-2">Abstract</h3>
-            {/* Display full abstract here */}
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {paper.abstract}
             </p>
@@ -114,8 +147,9 @@ export function PaperDetail({ paper, open, onOpenChange }: PaperDetailProps) {
 
           <Separator />
 
-          {/* PDF Preview */}
+          {/* PDF Preview (Updated with Dynamic URL) */}
           <div className="bg-muted/20 rounded-lg border h-[400px] flex flex-col items-center justify-center p-4">
+             {/* Note: Ensure this URL logic matches your Dashboard fix */}
             {paper.fileName ? (
               <iframe
                 src={paper.fileName}
