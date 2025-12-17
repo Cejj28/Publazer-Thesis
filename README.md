@@ -58,7 +58,8 @@ Or for development with auto-reload:
 
 npx nodemon index.js / node index.js
 
-Frontend Setup (Client)
+## 2. Frontend Setup (Client)
+
 Navigate to the frontend directory
 
 cd frontend/research-hub
